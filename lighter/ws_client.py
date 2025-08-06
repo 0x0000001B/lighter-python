@@ -10,8 +10,10 @@ class WsClient:
         host=None,
         path="/stream",
         order_book_ids=[],
+        trades_ids=[],
         account_ids=[],
         on_order_book_update=print,
+        on_trade_update=print,
         on_account_update=print,
     ):
         if host is None:
@@ -22,15 +24,17 @@ class WsClient:
         self.subscriptions = {
             "order_books": order_book_ids,
             "accounts": account_ids,
+            "trades": trades_ids
         }
 
-        if len(order_book_ids) == 0 and len(account_ids) == 0:
+        if len(order_book_ids) == 0 and len(account_ids) == 0 and len(trades_ids) == 0: 
             raise Exception("No subscriptions provided.")
 
         self.order_book_states = {}
         self.account_states = {}
 
         self.on_order_book_update = on_order_book_update
+        self.on_trade_update = on_trade_update
         self.on_account_update = on_account_update
 
         self.ws = None
@@ -43,10 +47,17 @@ class WsClient:
 
         if message_type == "connected":
             self.handle_connected(ws)
+        
         elif message_type == "subscribed/order_book":
             self.handle_subscribed_order_book(message)
         elif message_type == "update/order_book":
             self.handle_update_order_book(message)
+
+        elif message_type == "subscribed/trade":
+            self.handle_subscribed_trades(message)
+        elif message_type == "update/trade":
+            self.handle_update_trades(message)
+
         elif message_type == "subscribed/account_all":
             self.handle_subscribed_account(message)
         elif message_type == "update/account_all":
@@ -74,6 +85,10 @@ class WsClient:
                     {"type": "subscribe", "channel": f"account_all/{account_id}"}
                 )
             )
+        for market_id in self.subscriptions["trades"]:
+            ws.send(
+                json.dumps({"type": "subscribe", "channel": f"trade/{market_id}"})
+            )
 
     async def handle_connected_async(self, ws):
         for market_id in self.subscriptions["order_books"]:
@@ -85,6 +100,10 @@ class WsClient:
                 json.dumps(
                     {"type": "subscribe", "channel": f"account_all/{account_id}"}
                 )
+            )
+        for market_id in self.subscriptions["trades"]:
+            await ws.send(
+                json.dumps({"type": "subscribe", "channel": f"trade/{market_id}"})
             )
 
     def handle_subscribed_order_book(self, message):
@@ -123,6 +142,17 @@ class WsClient:
         existing_orders = [
             order for order in existing_orders if float(order["size"]) > 0
         ]
+
+
+
+    def handle_subscribed_trades(self, message):
+        print(message)
+
+    def handle_update_trades(self, message):
+        self.on_trade_update(message)
+
+
+        
 
     def handle_subscribed_account(self, message):
         account_id = message["channel"].split(":")[1]
