@@ -52,7 +52,6 @@ class WsClient:
             self.handle_subscribed_order_book(message)
         elif message_type == "update/order_book":
             self.handle_update_order_book(message)
-
         elif message_type == "subscribed/trade":
             self.handle_subscribed_trades(message)
         elif message_type == "update/trade":
@@ -62,8 +61,17 @@ class WsClient:
             self.handle_subscribed_account(message)
         elif message_type == "update/account_all":
             self.handle_update_account(message)
+        elif message_type == 'ping':
+            ws.send(
+                json.dumps({"type": "ping"})
+            )
+        elif message_type == 'pong':
+            ws.send(
+                json.dumps({"type": "pong"})
+            )
         else:
             self.handle_unhandled_message(message)
+
 
     async def on_message_async(self, ws, message):
         message = json.loads(message)
@@ -150,9 +158,6 @@ class WsClient:
 
     def handle_update_trades(self, message):
         self.on_trade_update(message)
-
-
-        
 
     def handle_subscribed_account(self, message):
         account_id = message["channel"].split(":")[1]
